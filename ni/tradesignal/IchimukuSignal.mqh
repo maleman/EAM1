@@ -29,6 +29,19 @@ public:
                       MqlRates &rates[]);
                       
    void toInfo();
+   
+   MarketTrend getActualTrend()        {return (actualTrend);}
+   MarketTrend getChinkouTrend()       {return (chinkouTrend);}
+   MarketTrend getKumoTrend()          {return (kumoTrend);}
+   MarketTrend getClosePriceTrend()    {return (closePriceTrend);}
+   MarketTrend getTekanKijunTrend()    {return (TekanKijunTrend);}
+   
+   //IchimokuSignals signal;
+   IchimokuSignals getTenkanKijunCrossSignal(){return (tenkanKijunCrossSignal);}
+   IchimokuSignals getKijunCrossSignal(){return (kijunCrossSignal);}
+   IchimokuSignals getKumoBreakSignal(){return (kumoBreakSignal);}
+   IchimokuSignals getSenkouCrossSignal(){return (senkouCrossSignal);}
+   
  
 protected:
 
@@ -60,7 +73,8 @@ protected:
    //IchimokuSignalsLog signals_logs[];
    IchimokuSignals signals_logs[];
    
-                     
+   
+                        
   };
   
  

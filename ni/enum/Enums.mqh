@@ -86,6 +86,12 @@ enum IchimokuSignals{
       KUMO_BUY_BREAKOUT,
       KUMO_SELL_BREAKOUT,
    };
+   
+   enum StrategyMode{
+      WISE_MODE,
+      SAFE_MODE,
+      ROOKIE_MODE,
+   };
 
  string marketTrendToString(MarketTrend trend){
    if(trend == NO_TREND)
