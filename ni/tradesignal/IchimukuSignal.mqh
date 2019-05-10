@@ -132,16 +132,18 @@ IchimukuSignal::search(double &Tenkan[],
 //|                                                                  |
 //+------------------------------------------------------------------+
 IchimukuSignal::getChinkouTrend(double &Chinkou[]){
-   double lastValue = Chinkou[0];
-   double compareValue = Chinkou[26];
+
+   int size = ArraySize(Chinkou)-1;
+   double last  = Chinkou[size-6];
+   double first = Chinkou[size];
    
-   if(lastValue == compareValue)
+   if(last == first)
       chinkouTrend = NO_TREND;
     
-    if(lastValue > compareValue)
+    if(first > last)
        chinkouTrend = UPTREND;
      
-    if(lastValue < compareValue )
+    if(first < last )
       chinkouTrend = DOWNTREND;   
 }
 
@@ -210,7 +212,7 @@ IchimukuSignal::getTenkanSenKijunSenTrend(double &Tenkan[],double &Kijun[],doubl
         TekanKijunTrend = ActualTekanKijunTrend;
    }
    
-   if(tenkanKijunCrossSignal != sig)
+   if(tenkanKijunCrossSignal != sig && sig != NO_SIGNAL)
       tenkanKijunCrossSignal = sig;
 }
 
@@ -302,8 +304,7 @@ IchimukuSignal::getClosePriceTrend(double &Senkou_A[],double &Senkou_B[], MqlRat
    
    //printf("CLOSE(0) : %G | CLOSE(26) : %G ", rates[0].close, rates[size+1].close);
    if(closePriceTrend != ActualClosePriceTrend){
-      printf("SE REALIZO UN CAMBIO DE TENDENCIA CON RESPECTO AL PRECIO DE CIERRE Y EL KUMO");
-      closePriceTrend = ActualClosePriceTrend;
+     closePriceTrend = ActualClosePriceTrend;
    }
 }
 
@@ -318,42 +319,36 @@ IchimukuSignal::kijunSenCross(double &Kijun[],double &Senkou_A[],double &Senkou_
    int ratesize = ArraySize(rates)-1;
    
    IchimokuSignals sig = NO_SIGNAL;
+   MarketTrend actualKijunKumoTrend = NO_TREND;
+   
+   if(Kijun[kijun] > Senkou_A[senkou] && Kijun[kijun] > Senkou_B[senkou])
+      actualKijunKumoTrend = UPTREND;
+   else if(Kijun[kijun] < Senkou_A[senkou] && Kijun[kijun] < Senkou_B[senkou])
+      actualKijunKumoTrend = DOWNTREND;
+    else if((Kijun[kijun] < Senkou_A[senkou] && Kijun[kijun] > Senkou_B[senkou]) 
+               || (Kijun[kijun] > Senkou_A[senkou] && Kijun[kijun] < Senkou_B[senkou])) 
+       actualKijunKumoTrend = NEUTRAL_TREND;
    
    
-   if(rates[ratesize].close > Senkou_A[senkou] && Kijun[kijun] > Senkou_A[senkou] 
-      &&  rates[ratesize].close > Senkou_B[senkou] && Kijun[kijun] > Senkou_B[senkou]){//KUMO OVER
-          
-          //UPTREND CROSS
-         if(rates[ratesize].open < Kijun[kijun] && rates[ratesize].close > Kijun[kijun])
-            sig = STRONG_BUY_KIJUN_SEN_CROSS;
-         else if(rates[ratesize].open > Kijun[kijun] && rates[ratesize].close < Kijun[kijun])
-             sig = WEAK_SELL_KIJUN_SEN_CROSS;
-             
-   }else if(rates[ratesize].close < Senkou_A[senkou] && Kijun[kijun] < Senkou_A[senkou] 
-      &&  rates[ratesize].close < Senkou_B[senkou] && Kijun[kijun] < Senkou_B[senkou]){ //KUMO BELOw
+   
+   if(rates[ratesize].open < Kijun[kijun] && rates[ratesize].close > Kijun[kijun]){ // UPTREND CROSS
+   
+      if(actualKijunKumoTrend == UPTREND)       sig = STRONG_BUY_KIJUN_SEN_CROSS;
+      if(actualKijunKumoTrend == DOWNTREND)     sig = WEAK_SELL_KIJUN_SEN_CROSS;
+      if(actualKijunKumoTrend == NEUTRAL_TREND) sig = NEUTRAL_BUY_KIJUN_SEN_CROSS;
          
-         //UPTREND CROSS
-         if(rates[ratesize].open < Kijun[kijun] && rates[ratesize].close > Kijun[kijun])
-            sig = WEAK_BUY_KIJUN_SEN_CROSS;
-         else if(rates[ratesize].open > Kijun[kijun] && rates[ratesize].close < Kijun[kijun])
-             sig = STRONG_SELL_KIJUN_SEN_CROSS;
-             
-   }else if(   (rates[ratesize].close < Senkou_A[senkou] && rates[ratesize].close > Senkou_B[senkou] 
-                  && Kijun[kijun] < Senkou_A[senkou] && Kijun[kijun] > Senkou_B[senkou])
-              ||(rates[ratesize].close > Senkou_A[senkou] && rates[ratesize].close < Senkou_B[senkou] 
-               && Kijun[kijun] > Senkou_A[senkou] && Kijun[kijun] < Senkou_B[senkou]) ){     //BETWEEN KUMO
-                  
-                   if(rates[ratesize].open < Kijun[kijun] && rates[ratesize].close > Kijun[kijun])
-                     sig = NEUTRAL_BUY_KIJUN_SEN_CROSS;
-                  else if(rates[ratesize].open > Kijun[kijun] && rates[ratesize].close < Kijun[kijun])
-                     sig = NEUTRAL_SELL_KIJUN_SEN_CROSS;
-   }
-   //else
-   //kijunCrossSignal = NO_SIGNAL;
    
-   if(kijunCrossSignal != sig)
+   }else if(rates[ratesize].open > Kijun[kijun] && rates[ratesize].close < Kijun[kijun]){ //DOWNTREND CROSS
+      
+      if(actualKijunKumoTrend == UPTREND)       sig = WEAK_SELL_KIJUN_SEN_CROSS;
+      if(actualKijunKumoTrend == DOWNTREND)     sig = STRONG_SELL_KIJUN_SEN_CROSS;
+      if(actualKijunKumoTrend == NEUTRAL_TREND) sig = NEUTRAL_SELL_KIJUN_SEN_CROSS;
+   }
+   
+  
+   if(kijunCrossSignal != sig && sig != NO_SIGNAL)
       kijunCrossSignal = sig;    
-                              
+                           
 }
 
 
@@ -366,23 +361,22 @@ IchimukuSignal::kumoBreak(double &Senkou_A[],double &Senkou_B[],MqlRates &rates[
    int rateSize = ArraySize(rates)-1;
    IchimokuSignals sig = NO_SIGNAL;
    
-   if((rates[rateSize-2].open < Senkou_A[senkou-2] && rates[rateSize-2].open > Senkou_B[senkou-2]) 
-      || (rates[rateSize-2].open > Senkou_A[senkou-2] && rates[rateSize-2].open < Senkou_B[senkou-2])){ //IF 3 LAST BARS EXISTS OPEN PRICE INSIDE OF KUMO
-      
-         if(rates[rateSize-2].close > Senkou_A[senkou-2] && rates[rateSize-2].close > Senkou_B[senkou-2]
+    if((rates[rateSize-1].open < Senkou_A[senkou-1] && rates[rateSize-1].open > Senkou_B[senkou-1]) 
+      || (rates[rateSize-1].open > Senkou_A[senkou-2] && rates[rateSize-1].open < Senkou_B[senkou-1])){
+         
+         if(kumoBreakSignal != KUMO_BUY_BREAKOUT 
             && rates[rateSize-1].close > Senkou_A[senkou-1] && rates[rateSize-1].close > Senkou_B[senkou-1]
             && rates[rateSize].close > Senkou_A[senkou] && rates[rateSize].close > Senkou_B[senkou])//KUMO BUY BREAK OUT
                sig = KUMO_BUY_BREAKOUT;
-          else if(rates[rateSize-2].close < Senkou_A[senkou-2] && rates[rateSize-2].close < Senkou_B[senkou-2]
+         else if(kumoBreakSignal != KUMO_SELL_BREAKOUT
             && rates[rateSize-1].close < Senkou_A[senkou-1] && rates[rateSize-1].close < Senkou_B[senkou-1]
             && rates[rateSize].close < Senkou_A[senkou] && rates[rateSize].close < Senkou_B[senkou])     
                sig = KUMO_SELL_BREAKOUT; 
-      
+               
+         if(kumoBreakSignal != sig && sig != NO_SIGNAL)
+            kumoBreakSignal = sig;
       }
-      
-      if(kumoBreakSignal != sig)
-         kumoBreakSignal = sig;
-
+       
 }
 
 
@@ -393,9 +387,9 @@ IchimukuSignal::toInfo(){
 
    Comment("Senales de Indicador Ichimoku" ,"\n"
             "Tendencia Chikou(26)            : ",marketTrendToString(chinkouTrend),"\n",
-            "Tendencia Tekan <> Kijun        : ",marketTrendToString(TekanKijunTrend),"\n",
-            "Tendencia Kumo                  : ",marketTrendToString(kumoTrend),"\n",
-            "Tendencia Precio de cierre Kumo : ",marketTrendToString(closePriceTrend),"\n",
+            //"Tendencia Tekan <> Kijun        : ",marketTrendToString(TekanKijunTrend),"\n",
+            //"Tendencia Kumo                  : ",marketTrendToString(kumoTrend),"\n",
+            //"Tendencia Precio de cierre Kumo : ",marketTrendToString(closePriceTrend),"\n",
             "TENKAN/KINJUN CROSS SIGNAL      : ",ichimokuSignalsToString(tenkanKijunCrossSignal),"\n",
             "KINJUN CROSS SIGNAL             : ",ichimokuSignalsToString(kijunCrossSignal),"\n",
             "KUMO BREAK SIGNAL               : ",ichimokuSignalsToString(kumoBreakSignal),"\n",
