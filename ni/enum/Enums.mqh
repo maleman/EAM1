@@ -32,6 +32,9 @@ enum MarketTrend{
       NEUTRAL_TREND,
       UPTREND,
       DOWNTREND,
+
+      VERY_STRONG_UPTREND,
+      VERY_STRONG_DOWNTREND,
       
       STRONG_UPTREND,
       STRONG_DOWNTREND,
@@ -42,6 +45,18 @@ enum MarketTrend{
       WEAK_UPTREND,
       WEAK_DOWNTREND,
  };
+ 
+enum AdxSignals{
+   
+   VERY_STRONG_BUY,
+   VERY_STRONG_SELL,
+   STRONG_BUY,
+   STRONG_SELL,
+   NEUTRAL_BUY,
+   NEUTRAL_SELL,
+   WEAK_BUY,
+   WEAK_SELL,
+};
  
 enum IchimokuSignals{
       NO_SIGNAL,
@@ -100,13 +115,17 @@ enum IchimokuSignals{
       return ("UPTREND");
    else if(trend == DOWNTREND)
       return ("DOWNTREND");
+   else if(trend == VERY_STRONG_UPTREND)
+      return ("VERY STRONG UPTREND");
+   else if(trend == VERY_STRONG_DOWNTREND)
+      return ("VERY STRONG DOWNTREND");
    else if(trend == STRONG_UPTREND)
       return ("STRONG UPTREND");
    else if(trend == STRONG_DOWNTREND)
       return ("STRONG DOWNTREND");
    else if(trend == NEUTRAL_UPTREND)
       return ("NEUTRAL UPTREND");
-   else if(trend == NEUTRAL_UPTREND)
+   else if(trend == NEUTRAL_DOWNTREND)
       return ("NEUTRAL DOWTREND");
    else if(trend == WEAK_UPTREND)
       return ("WEAK UPTERND");
@@ -181,3 +200,8 @@ enum IchimokuSignals{
          
       return ("NEUTRAL SIGNAL");
  }
+ 
+ enum ENUM_INDICATOR_TYPE{
+   ICHIMOKU,
+   ADX,
+ };
