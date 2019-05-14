@@ -1,38 +1,34 @@
 //+------------------------------------------------------------------+
-//|                                             IndicatorFactory.mqh |
+//|                                                     Strategy.mqh |
 //|                        Copyright 2019, MetaQuotes Software Corp. |
 //|                                             https://www.mql5.com |
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2019, MetaQuotes Software Corp."
 #property link      "https://www.mql5.com"
 #property version   "1.00"
-
-#include "..\enum\Enums.mqh"
-#include "Indicator.mqh"
-#include "Ichimoku.mqh"
-#include "Adx.mqh"
-#include "Ema.mqh"
-
 //+------------------------------------------------------------------+
 //|                                                                  |
 //+------------------------------------------------------------------+
-class IndicatorFactory
+class Strategy
   {
 private:
 
 public:
-      Indicator *getIndicator(ENUM_INDICATOR_TYPE type);
-      
+   Strategy();
+   ~Strategy();
+   virtual  int start(string symbol,ENUM_TIMEFRAMES timeFrames);
+   virtual  int onTick();
   };
 //+------------------------------------------------------------------+
 //|                                                                  |
 //+------------------------------------------------------------------+
-Indicator *IndicatorFactory::getIndicator(ENUM_INDICATOR_TYPE type){
-    if(type == ICHIMOKU)
-      return new Ichimoku();
-    else if(type == ADX)
-      return new Adx();
-    else if(type == DEMA)
-      return new Ema();
-    return NULL;
-}
+Strategy::Strategy()
+  {
+  }
+//+------------------------------------------------------------------+
+//|                                                                  |
+//+------------------------------------------------------------------+
+Strategy::~Strategy()
+  {
+  }
+//+------------------------------------------------------------------+

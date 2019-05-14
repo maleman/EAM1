@@ -46,6 +46,12 @@ enum MarketTrend{
       WEAK_DOWNTREND,
  };
  
+enum EmaSignals{
+   NA,
+   BUY,
+   SELL
+};
+ 
 enum AdxSignals{
    
    VERY_STRONG_BUY,
@@ -204,4 +210,5 @@ enum IchimokuSignals{
  enum ENUM_INDICATOR_TYPE{
    ICHIMOKU,
    ADX,
+   DEMA,
  };
