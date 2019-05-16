@@ -1,43 +1,54 @@
 //+------------------------------------------------------------------+
-//|                                                     Strategy.mqh |
+//|                                                   EmaDataSet.mqh |
 //|                        Copyright 2019, MetaQuotes Software Corp. |
 //|                                             https://www.mql5.com |
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2019, MetaQuotes Software Corp."
 #property link      "https://www.mql5.com"
 #property version   "1.00"
+
+
+
+#include "..\..\enum\Enums.mqh"
 //+------------------------------------------------------------------+
 //|                                                                  |
 //+------------------------------------------------------------------+
-class Strategy
+class EmaDataSet
   {
 private:
-
-protected:
-/*
-   string            symbol;
-   ENUM_TIMEFRAMES   period;
-   double            stopLost;
-   double            takeProfit;
-   double            volume;
-*/
-
+   EmaSignals        signal;
+   bool              processed;
 public:
-                     Strategy();
-                    ~Strategy();
-   virtual int       start(string symbol,ENUM_TIMEFRAMES timeFrames);
-   virtual int       onTick();
+                     EmaDataSet();
+                     EmaDataSet(EmaSignals sig,bool proc);
+                    ~EmaDataSet();
+   EmaSignals getSignal(){return signal;}
+   bool isProcessed(){return processed;}
+   void Processed(bool proc)
+     {
+      if(processed!=proc)
+         processed=proc;
+     }
+
   };
 //+------------------------------------------------------------------+
 //|                                                                  |
 //+------------------------------------------------------------------+
-Strategy::Strategy()
+EmaDataSet::EmaDataSet()
   {
   }
 //+------------------------------------------------------------------+
 //|                                                                  |
 //+------------------------------------------------------------------+
-Strategy::~Strategy()
+EmaDataSet::EmaDataSet(EmaSignals sig,bool proc)
+  {
+   signal=sig;
+   processed=proc;
+  }
+//+------------------------------------------------------------------+
+//|                                                                  |
+//+------------------------------------------------------------------+
+EmaDataSet::~EmaDataSet()
   {
   }
 //+------------------------------------------------------------------+

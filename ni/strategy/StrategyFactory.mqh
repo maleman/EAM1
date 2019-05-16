@@ -9,6 +9,7 @@
 
 #include "Strategy.mqh"
 #include "EmaStrategy.mqh"
+#include "IchimokuStrategy.mqh"
 
 //+------------------------------------------------------------------+
 //|                                                                  |
@@ -28,6 +29,8 @@ Strategy *StrategyFactory::getStrategy(int method){
    
    if(method == 0)
       return new EmaStrategy();
+      else if(method == 1)
+         return new IchimokuStrategy;
       
    return NULL;
 }

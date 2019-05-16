@@ -1,5 +1,5 @@
 //+------------------------------------------------------------------+
-//|                                                     Strategy.mqh |
+//|                                                SignalDataSet.mqh |
 //|                        Copyright 2019, MetaQuotes Software Corp. |
 //|                                             https://www.mql5.com |
 //+------------------------------------------------------------------+
@@ -9,35 +9,24 @@
 //+------------------------------------------------------------------+
 //|                                                                  |
 //+------------------------------------------------------------------+
-class Strategy
+class SignalDataSet
   {
 private:
 
-protected:
-/*
-   string            symbol;
-   ENUM_TIMEFRAMES   period;
-   double            stopLost;
-   double            takeProfit;
-   double            volume;
-*/
-
 public:
-                     Strategy();
-                    ~Strategy();
-   virtual int       start(string symbol,ENUM_TIMEFRAMES timeFrames);
-   virtual int       onTick();
+                     SignalDataSet();
+                    ~SignalDataSet();
   };
 //+------------------------------------------------------------------+
 //|                                                                  |
 //+------------------------------------------------------------------+
-Strategy::Strategy()
+SignalDataSet::SignalDataSet()
   {
   }
 //+------------------------------------------------------------------+
 //|                                                                  |
 //+------------------------------------------------------------------+
-Strategy::~Strategy()
+SignalDataSet::~SignalDataSet()
   {
   }
 //+------------------------------------------------------------------+

@@ -27,6 +27,7 @@
 //+------------------------------------------------------------------+
 
 
+
 enum MarketTrend{
       NO_TREND,
       NEUTRAL_TREND,
@@ -108,7 +109,7 @@ enum IchimokuSignals{
       KUMO_SELL_BREAKOUT,
    };
    
-   enum StrategyMode{
+   enum TRADE_MODE{
       WISE_MODE,
       SAFE_MODE,
       ROOKIE_MODE,

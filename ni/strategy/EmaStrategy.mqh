@@ -11,6 +11,7 @@
 #include "..\indicator\Ema.mqh"
 #include "..\indicator\IndicatorFactory.mqh"
 #include "..\trade\EaTrade.mqh"
+#include "..\dataset\signal\EmaDataSet.mqh"
 //+------------------------------------------------------------------+
 //|                                                                  |
 //+------------------------------------------------------------------+
@@ -21,6 +22,7 @@ private:
    EmaSignals        lastSig;
    EaTrade          *trade;
 
+   bool              trailingStop;
    string            symbol;
    double            sl;
    double            tp;
@@ -39,6 +41,20 @@ public:
                     ~EmaStrategy();
 
    virtual int       start(string psymbol,ENUM_TIMEFRAMES timeFrames);
+   int               start(double pvol,
+                           double psl,
+                           double ptp,
+                           string psymbol,
+                           ENUM_TIMEFRAMES timeFrames,
+                           int ma_period_1,
+                           int ma_period_2,
+                           int ma_shift_1 = 0,
+                           int ma_shift_2 = 0,
+                           ENUM_MA_METHOD ma_method_1=MODE_EMA,
+                           ENUM_MA_METHOD ma_method_2=MODE_EMA,
+                           ENUM_APPLIED_PRICE applied_price_1=PRICE_CLOSE,
+                           ENUM_APPLIED_PRICE applied_price_2=PRICE_CLOSE,
+                           bool trstp=false);
    virtual int       onTick();
 
    void              setValuesTrade(double pvol,double psl,double ptp,
@@ -50,6 +66,8 @@ public:
                                     ENUM_MA_METHOD ma_method_2=MODE_EMA,
                                     ENUM_APPLIED_PRICE applied_price_1=PRICE_CLOSE,
                                     ENUM_APPLIED_PRICE applied_price_2=PRICE_CLOSE)
+
+
      {
 
       vol   = pvol;
@@ -96,31 +114,67 @@ int EmaStrategy::start(string psymbol,ENUM_TIMEFRAMES timeFrames)
 //+------------------------------------------------------------------+
 //|                                                                  |
 //+------------------------------------------------------------------+
+int EmaStrategy::start(double pvol,
+                       double psl,
+                       double ptp,
+                       string psymbol,
+                       ENUM_TIMEFRAMES timeFrames,
+                       int ma_period_1,
+                       int ma_period_2,
+                       int ma_shift_1 = 0,
+                       int ma_shift_2 = 0,
+                       ENUM_MA_METHOD ma_method_1=MODE_EMA,
+                       ENUM_MA_METHOD ma_method_2=MODE_EMA,
+                       ENUM_APPLIED_PRICE applied_price_1=PRICE_CLOSE,
+                       ENUM_APPLIED_PRICE applied_price_2=PRICE_CLOSE,
+                       bool trstp=false)
+  {
+
+   vol=pvol;
+   sl    = psl;
+   tp    = ptp;
+   period_1 = ma_period_1;
+   period_2 = ma_period_2;
+   shift_1  = ma_shift_1;
+   shift_2=ma_shift_2;
+   method_1 = ma_method_1;
+   method_2 = ma_method_2;
+   app_price_1 = applied_price_1;
+   app_price_2 = applied_price_2;
+   trailingStop= trstp;
+
+   return start(psymbol, timeFrames);
+
+  }
+//+------------------------------------------------------------------+
+//|                                                                  |
+//+------------------------------------------------------------------+
 int EmaStrategy::onTick()
   {
 
    if(trade==NULL)
       trade=new EaTrade();
-
-   //trade.traillingStop();
+   if(trailingStop)
+      trade.traillingStop();
 
    if(ema!=NULL)
       ema.onTick();
 
-   EmaSignals sig=ema.getLastSignal();
+   EmaDataSet *sigDS=ema.getLastSigDs();
 
-   if(lastSig!=sig)
+   if(sigDS!=NULL && lastSig!=sigDS.getSignal() && !sigDS.isProcessed())
      {
-
-      if(sig==BUY)
+      if(sigDS.getSignal()==BUY)
         {
          string orderComent="BUY";
          trade.buy(symbol,orderComent,vol,sl,tp);
-           }else if(sig==SELL){
+         sigDS.Processed(true);
+           }else if(sigDS.getSignal()==SELL){
          string orderComent="SELL";
          trade.sell(symbol,orderComent,vol,sl,tp);
+         sigDS.Processed(true);
         }
-      lastSig=sig;
+      lastSig=sigDS.getSignal();
      }
 
    return 1;

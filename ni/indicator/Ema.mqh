@@ -10,6 +10,7 @@
 
 #include "Indicator.mqh"
 #include "..\enum\Enums.mqh"
+#include "..\dataset\signal\EmaDataSet.mqh"
 //+------------------------------------------------------------------+
 //|                                                                  |
 //+------------------------------------------------------------------+
@@ -42,6 +43,7 @@ private:
    ENUM_APPLIED_PRICE app_price_2;
 
    EmaSignals        signals[];
+   EmaDataSet       *signalsSet[];
 
 public:
                      Ema();
@@ -52,9 +54,9 @@ public:
    virtual int getHandle(){return handle;}
 
    EmaSignals        getLastSignal();
-
+   EmaDataSet       *getLastSigDs();
    void              toInfo();
-
+   void              deInit();
 
    void setIndicatorData(int ma_period_1,
                          int ma_period_2,
@@ -148,7 +150,7 @@ Ema::lookforsigns(void)
 
    int f = ArraySize(iMABuffer)-1;
    int a = ArraySize(iMABuffer2)-1;
- 
+
 
    if(iMABuffer[f-2]<iMABuffer2[a-2]
       && iMABuffer[f]>iMABuffer2[a])
@@ -163,20 +165,46 @@ Ema::lookforsigns(void)
 //+------------------------------------------------------------------+
 Ema::addSignal(EmaSignals sig)
   {
-   int signalSize=ArraySize(signals);
-   ArrayResize(signals,signalSize+1);
-   signals[signalSize]=sig;
+//int signalSize=ArraySize(signals);
+//ArrayResize(signals,signalSize+1);
+//signals[signalSize]=sig;
+
+   int signalSize=ArraySize(signalsSet);
+   ArrayResize(signalsSet,signalSize+1);
+   signalsSet[signalSize]=new EmaDataSet(sig,false);
+
   }
 //+------------------------------------------------------------------+
 //|                                                                  |
 //+------------------------------------------------------------------+
 EmaSignals Ema::getLastSignal()
   {
-   int i=ArraySize(signals)-1;
+   EmaDataSet ds=getLastSigDs();
+   if(!ds.isProcessed())
+      return ds.getSignal();
+   else
+      return NA;
+  }
+//+------------------------------------------------------------------+
 
+//+------------------------------------------------------------------+
+//|                                                                  |
+//+------------------------------------------------------------------+
+EmaDataSet *Ema::getLastSigDs()
+  {
+   int i=ArraySize(signalsSet)-1;
    if(i>=0)
-      return signals[i];
+      return signalsSet[i];
 
-   return NO_SIGNAL;
+   return NULL;
+  }
+//+------------------------------------------------------------------+
+
+//+------------------------------------------------------------------+
+//|                                                                  |
+//+------------------------------------------------------------------+
+Ema::deInit()
+  {
+   //delete signalsSet;
   }
 //+------------------------------------------------------------------+
