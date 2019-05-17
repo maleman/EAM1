@@ -19,7 +19,7 @@ input TRADE_MODE trade_mode = WISE_MODE;
 input ENUM_TIMEFRAMES period=PERIOD_H1;
 
 input double stop_lost     = 0.0030;
-input double take_profit   = 0.0050;
+input double take_profit   = 0.0100;
 input double volume        = 0.10;
 input bool trailing_stop_mode=true;
 

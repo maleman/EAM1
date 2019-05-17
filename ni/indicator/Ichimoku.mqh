@@ -34,6 +34,8 @@ private:
    MarketTrend       closePriceTrend;
    MarketTrend       TekanKijunTrend;
 
+   IchimokuSignals   lastSignal;
+
    //IchimokuSignals   signals[];
 
    string            symbol;
@@ -45,6 +47,9 @@ protected:
    virtual void      lookforTrend();
 
    void              addSignal(IchimokuSignals sig);
+   void              onTKCross();
+   void              onChikouCross();
+   void              onKumo();
 
 public:
                      Ichimoku();
@@ -153,6 +158,160 @@ int Ichimoku::onTick()
 //+------------------------------------------------------------------+
 //|                                                                  |
 //+------------------------------------------------------------------+
+Ichimoku::onTKCross()
+  {
+
+   int tenkanSize=ArraySize(tenkanSenBuffer)-1;
+   int kijunSize=ArraySize(kijunSenBuffer)-1;
+   int sekouSize= ArraySize(senkouSpanABuffer)-1;
+
+   double tklast=tenkanSenBuffer[tenkanSize];
+   double tkmiddle=tenkanSenBuffer[tenkanSize-1];
+   double tknext=tenkanSenBuffer[tenkanSize -2];
+
+   double kjlast=kijunSenBuffer[kijunSize];
+   double kjmiddle=kijunSenBuffer[kijunSize-1];
+   double kjnext=kijunSenBuffer[kijunSize-2];
+
+   double ska = senkouSpanABuffer[sekouSize];
+   double skb = senkouSpanABuffer[sekouSize];
+   MarketTrend localTrend=NO_TREND;
+
+   bool uptrendTK    = (tklast>kjlast);
+   bool downtrendTK  = (tklast<=kjlast);
+
+   localTrend=(uptrendTK && !downtrendTK)?UPTREND:DOWNTREND;
+
+   bool uptrendKumo=(tkmiddle>ska && tkmiddle>skb && kjmiddle>ska && kjmiddle>skb);
+   bool downtrendKumo=(tkmiddle<ska && tkmiddle<skb && kjmiddle<ska && kjmiddle<skb);
+
+   if(localTrend!=TekanKijunTrend) //SI HAY CAMBIO DE TENDENCIA
+     {
+      if(uptrendTK)
+        {
+         TekanKijunTrend=UPTREND;
+
+         if(uptrendKumo)
+            addSignal(STRONG_BUY_TS_KS_CROSS);
+         else if(downtrendKumo)
+            addSignal(WEAK_BUY_TS_KS_CROSS);
+         else
+            addSignal(NEUTRAL_BUY_TS_KS_CROSS);
+        }
+      else if(downtrendTK)
+        {
+         TekanKijunTrend=DOWNTREND;
+
+         if(uptrendKumo)
+            addSignal(WEAK_SELL_TS_KS_CROSS);
+         else if(downtrendKumo)
+            addSignal(STRONG_BUY_TS_KS_CROSS);
+         else
+            addSignal(NEUTRAL_BUY_TS_KS_CROSS);
+        }
+     }
+
+  }
+//+------------------------------------------------------------------+
+//|                                                                  |
+//+------------------------------------------------------------------+
+Ichimoku::onChikouCross(void)
+  {
+   int kijunSize   = ArraySize(kijunSenBuffer)-1;
+   int rateSize    = ArraySize(rates)-1;
+
+   bool uptrendCross=(rates[rateSize].open<kijunSenBuffer[kijunSize] && rates[rateSize].close>kijunSenBuffer[kijunSize]);
+   bool downTrendCross=(rates[rateSize].open>kijunSenBuffer[kijunSize] && rates[rateSize].close<kijunSenBuffer[kijunSize]);
+
+   if(uptrendCross)
+     { // UPTREND CROSS
+
+      if(kumoTrend == UPTREND)       addSignal(STRONG_BUY_KIJUN_SEN_CROSS);
+      if(kumoTrend == DOWNTREND)     addSignal(WEAK_SELL_KIJUN_SEN_CROSS);
+      if(kumoTrend == NEUTRAL_TREND) addSignal(NEUTRAL_BUY_KIJUN_SEN_CROSS);
+
+
+     }
+   else if(downTrendCross)
+     { //DOWNTREND CROSS
+
+      if(kumoTrend == UPTREND)       addSignal(WEAK_SELL_KIJUN_SEN_CROSS);
+      if(kumoTrend == DOWNTREND)     addSignal(STRONG_SELL_KIJUN_SEN_CROSS);
+      if(kumoTrend == NEUTRAL_TREND) addSignal(NEUTRAL_SELL_KIJUN_SEN_CROSS);
+     }
+
+  }
+//+------------------------------------------------------------------+
+//|                                                                  |
+//+------------------------------------------------------------------+
+Ichimoku::onKumo(void)
+  {
+
+   int rateSize    = ArraySize(rates)-1;
+   int sekouSize   = ArraySize(senkouSpanABuffer)-1;
+
+   double skal = senkouSpanABuffer[sekouSize];
+   double skam = senkouSpanABuffer[sekouSize-1];
+   double skan = senkouSpanABuffer[sekouSize-2];
+
+   double skbl = senkouSpanBBuffer[sekouSize];
+   double skbm = senkouSpanBBuffer[sekouSize-1];
+   double skbn = senkouSpanBBuffer[sekouSize-2];
+
+   double rcl=rates[rateSize].close;
+   double rcm=rates[rateSize-1].close;
+
+   double rol=rates[rateSize].open;
+   double rom=rates[rateSize-1].open;
+
+//looking for kumotrend
+   if(skan<skbn && skal>skbl)
+      kumoTrend=UPTREND;
+   else if(skan>skbn && skal<skbl)
+      kumoTrend=DOWNTREND;
+
+// Looking for senkou span +
+
+   if(skan<skbn && skal>skbl)
+     {// uptrend cross
+
+      if(rcl>skal && rcl<skbl)
+         addSignal(STRONG_BUY_SENKOU_SPAN_CROSS);
+      else
+      if(rcl<skal && rcl<skbl)
+         addSignal(WEAK_BUY_SENKOU_SPAN_CROSS);
+      else
+      if(((rcl<skal && rcl>skbl) || (rcl>skal && rcl<skbl)))
+         addSignal(NEUTRAL_BUY_SENKOU_SPAN_CROSS);
+
+     }
+   else
+   if(skan>skbn && skal<skbl)
+     {// uptrend cross
+
+      if(rcl<skal && rcl<skbl)
+         addSignal(STRONG_SELL_SENKOU_SPAN_CROSS);
+      else
+      if(rcl>skal && rcl>skbl)
+         addSignal(WEAK_SELL_SENKOU_SPAN_CROSS);
+      else
+      if(((rcl<skal && rcl>skbl) || (rcl>skal && rcl<skbl)))
+         addSignal(NEUTRAL_SELL_SENKOU_SPAN_CROSS);
+     }
+
+//KUMO Break
+   if((rom<skal && rom>skbl) || (rcm>skal && rcm>skbl)
+      && rol>skal && rol>skbl && rcl>skal && rcl>skbl)
+      addSignal(KUMO_BUY_BREAKOUT);
+   else
+      if((rom>skal && rom<skbl) || (rcm<skal && rcm>skbl)
+         && rol<skal && rol<skbl && rcl<skal && rcl<skbl)
+         addSignal(KUMO_BUY_BREAKOUT);
+
+  }
+//+------------------------------------------------------------------+
+//|                                                                  |
+//+------------------------------------------------------------------+
 Ichimoku::lookforsigns()
   {
    int rateSize    = ArraySize(rates)-1;
@@ -170,138 +329,9 @@ Ichimoku::lookforsigns()
    if(first > last)    chinkouTrend = UPTREND;
    if(first < last )   chinkouTrend = DOWNTREND;
 
-//looking for kumotrend
-   if(senkouSpanABuffer[0]<senkouSpanBBuffer[0]
-      && senkouSpanABuffer[sekouSize]>senkouSpanBBuffer[sekouSize])
-      kumoTrend=UPTREND;
-   else if(senkouSpanABuffer[0]>senkouSpanBBuffer[0]
-      && senkouSpanABuffer[sekouSize]<senkouSpanBBuffer[sekouSize])
-      kumoTrend=DOWNTREND;
-
-//Looking for tekan/kinjun + and tekan/kinjun trend
-   if(tenkanSenBuffer[0]<kijunSenBuffer[0]
-      && tenkanSenBuffer[tenkanSize]>kijunSenBuffer[kijunSize])
-     {//uptrend cross finded
-
-      TekanKijunTrend=UPTREND;
-
-      if(tenkanSenBuffer[tenkanSize]>senkouSpanABuffer[sekouSize]
-         && tenkanSenBuffer[tenkanSize]>senkouSpanBBuffer[sekouSize]
-         && kijunSenBuffer[kijunSize]>senkouSpanABuffer[sekouSize]
-         && kijunSenBuffer[kijunSize]>senkouSpanBBuffer[sekouSize])
-        { // KUMO over 
-         addSignal(STRONG_BUY_TS_KS_CROSS);
-        }
-      else
-         if(tenkanSenBuffer[tenkanSize]<senkouSpanABuffer[sekouSize]// KUMO Below  
-            && tenkanSenBuffer[tenkanSize]<senkouSpanBBuffer[sekouSize]
-            && kijunSenBuffer[kijunSize]<senkouSpanABuffer[sekouSize]
-            && kijunSenBuffer[kijunSize]<senkouSpanBBuffer[sekouSize])
-           {
-            addSignal(WEAK_BUY_TS_KS_CROSS);
-           }
-      else
-         if(((tenkanSenBuffer[tenkanSize]<senkouSpanABuffer[sekouSize] && tenkanSenBuffer[tenkanSize]>senkouSpanBBuffer[sekouSize])
-            || (tenkanSenBuffer[tenkanSize]>senkouSpanABuffer[sekouSize] && tenkanSenBuffer[tenkanSize]<senkouSpanBBuffer[sekouSize]))
-            && ((kijunSenBuffer[kijunSize]<senkouSpanABuffer[sekouSize] && kijunSenBuffer[kijunSize]<senkouSpanBBuffer[sekouSize])
-            || (kijunSenBuffer[kijunSize]>senkouSpanABuffer[sekouSize] && kijunSenBuffer[kijunSize]>senkouSpanBBuffer[sekouSize]))) //KUMO BETWEEN
-            addSignal(NEUTRAL_BUY_TS_KS_CROSS);
-     }
-   else
-      if(tenkanSenBuffer[0]>kijunSenBuffer[0]
-         && tenkanSenBuffer[tenkanSize]<kijunSenBuffer[kijunSize])
-        {//downtrend cross finded
-
-         TekanKijunTrend=DOWNTREND;
-
-         if(tenkanSenBuffer[tenkanSize]>senkouSpanABuffer[sekouSize]
-            && tenkanSenBuffer[tenkanSize]>senkouSpanBBuffer[sekouSize]
-            && kijunSenBuffer[kijunSize]>senkouSpanABuffer[sekouSize]
-            && kijunSenBuffer[kijunSize]>senkouSpanBBuffer[sekouSize])
-           { // KUMO over 
-            addSignal(WEAK_SELL_TS_KS_CROSS);
-           }
-         else
-            if(tenkanSenBuffer[tenkanSize]<senkouSpanABuffer[sekouSize]// KUMO Below  
-               && tenkanSenBuffer[tenkanSize]<senkouSpanBBuffer[sekouSize]
-               && kijunSenBuffer[kijunSize]<senkouSpanABuffer[sekouSize]
-               && kijunSenBuffer[kijunSize]<senkouSpanBBuffer[sekouSize])
-              {
-               addSignal(STRONG_SELL_TS_KS_CROSS);
-              }
-         else
-            if(((tenkanSenBuffer[tenkanSize]<senkouSpanABuffer[sekouSize] && tenkanSenBuffer[tenkanSize]>senkouSpanBBuffer[sekouSize])
-               || (tenkanSenBuffer[tenkanSize]>senkouSpanABuffer[sekouSize] && tenkanSenBuffer[tenkanSize]<senkouSpanBBuffer[sekouSize]))
-               && ((kijunSenBuffer[kijunSize]<senkouSpanABuffer[sekouSize] && kijunSenBuffer[kijunSize]<senkouSpanBBuffer[sekouSize])
-               || (kijunSenBuffer[kijunSize]>senkouSpanABuffer[sekouSize] && kijunSenBuffer[kijunSize]>senkouSpanBBuffer[sekouSize]))) //KUMO BETWEEN
-               addSignal(NEUTRAL_SELL_TS_KS_CROSS);
-        }
-
-// Looking for senkou span +
-
-   if(senkouSpanABuffer[0]<senkouSpanBBuffer[0]
-      && senkouSpanABuffer[sekouSize]>senkouSpanBBuffer[sekouSize])
-     {// uptrend cross
-
-      if(rates[rateSize].close>senkouSpanABuffer[sekouSize] && rates[rateSize].close<senkouSpanBBuffer[sekouSize])
-         addSignal(STRONG_BUY_SENKOU_SPAN_CROSS);
-      else if(rates[rateSize].close<senkouSpanABuffer[sekouSize] && rates[rateSize].close<senkouSpanBBuffer[sekouSize])
-         addSignal(WEAK_BUY_SENKOU_SPAN_CROSS);
-      else if(((rates[rateSize].close<senkouSpanABuffer[sekouSize] && rates[rateSize].close>senkouSpanBBuffer[sekouSize])
-         || (rates[rateSize].close>senkouSpanABuffer[sekouSize] && rates[rateSize].close<senkouSpanBBuffer[sekouSize])))
-         addSignal(NEUTRAL_BUY_SENKOU_SPAN_CROSS);
-
-     }
-   else
-      if(senkouSpanABuffer[0]<senkouSpanBBuffer[0]
-         && senkouSpanABuffer[sekouSize]>senkouSpanBBuffer[sekouSize])
-        {// uptrend cross
-
-         if(rates[rateSize].close<senkouSpanABuffer[sekouSize] && rates[rateSize].close<senkouSpanBBuffer[sekouSize])
-            addSignal(STRONG_SELL_SENKOU_SPAN_CROSS);
-         else if(rates[rateSize].close>senkouSpanABuffer[sekouSize] && rates[rateSize].close>senkouSpanBBuffer[sekouSize])
-            addSignal(WEAK_SELL_SENKOU_SPAN_CROSS);
-         else if(((rates[rateSize].close<senkouSpanABuffer[sekouSize] && rates[rateSize].close>senkouSpanBBuffer[sekouSize])
-            || (rates[rateSize].close>senkouSpanABuffer[sekouSize] && rates[rateSize].close<senkouSpanBBuffer[sekouSize])))
-            addSignal(NEUTRAL_SELL_SENKOU_SPAN_CROSS);
-        }
-
-//KUMO Break
-   if(rates[rateSize-1].open<senkouSpanABuffer[sekouSize-1]
-      && rates[rateSize - 1].open > senkouSpanBBuffer[sekouSize - 1 ]
-      && rates[rateSize - 1].close > senkouSpanABuffer[sekouSize - 1]
-      && rates[rateSize - 1].close > senkouSpanBBuffer[sekouSize - 1]
-      && rates[rateSize].open > senkouSpanABuffer[sekouSize]
-      && rates[rateSize].open > senkouSpanABuffer[sekouSize]
-      && rates[rateSize].close > senkouSpanABuffer[sekouSize]
-      && rates[rateSize].close>senkouSpanABuffer[sekouSize])
-     {
-      addSignal(KUMO_BUY_BREAKOUT);
-     }
-   else if(rates[rateSize-1].open>senkouSpanABuffer[sekouSize-1]
-      && rates[rateSize - 1].open < senkouSpanBBuffer[sekouSize - 1]
-      && rates[rateSize - 1].close < senkouSpanABuffer[sekouSize - 1]
-      && rates[rateSize - 1].close < senkouSpanBBuffer[sekouSize - 1]
-      && rates[rateSize].open < senkouSpanABuffer[sekouSize]
-      && rates[rateSize].open < senkouSpanABuffer[sekouSize]
-      && rates[rateSize].close < senkouSpanABuffer[sekouSize]
-      && rates[rateSize].close < senkouSpanABuffer[sekouSize])
-      addSignal(KUMO_BUY_BREAKOUT);
-
-   if(rates[rateSize].open<kijunSenBuffer[kijunSize] && rates[rateSize].close>kijunSenBuffer[kijunSize])
-     { // UPTREND CROSS
-
-      if(kumoTrend == UPTREND)       addSignal(STRONG_BUY_KIJUN_SEN_CROSS);
-      if(kumoTrend == DOWNTREND)     addSignal(WEAK_SELL_KIJUN_SEN_CROSS);
-      if(kumoTrend == NEUTRAL_TREND) addSignal(NEUTRAL_BUY_KIJUN_SEN_CROSS);
-
-
-        }else if(rates[rateSize].open>kijunSenBuffer[kijunSize] && rates[rateSize].close<kijunSenBuffer[kijunSize]){ //DOWNTREND CROSS
-
-      if(kumoTrend == UPTREND)       addSignal(WEAK_SELL_KIJUN_SEN_CROSS);
-      if(kumoTrend == DOWNTREND)     addSignal(STRONG_SELL_KIJUN_SEN_CROSS);
-      if(kumoTrend == NEUTRAL_TREND) addSignal(NEUTRAL_SELL_KIJUN_SEN_CROSS);
-     }
+   onKumo();
+   onTKCross();
+   onChikouCross();
 
   }
 //+------------------------------------------------------------------+
@@ -310,12 +340,7 @@ Ichimoku::lookforsigns()
 Ichimoku::toInfo()
   {
 
-//int signalSize=ArraySize(signals);
 
-// for(int i=0; i<signalSize && signalSize>0; i++)
-//   {
-//    printf("[%d]:\t%s",i,ichimokuSignalsToString(signals[i]));
-//  }
 
   }
 //+------------------------------------------------------------------+
@@ -323,12 +348,14 @@ Ichimoku::toInfo()
 //+------------------------------------------------------------------+
 Ichimoku::addSignal(IchimokuSignals sig)
   {
-//int signalSize  = ArraySize(signals);
-//ArrayResize(signals,signalSize+1);
-//signals[signalSize] = sig;
+
+   if(sig==lastSignal)
+      return;
 
    int signalSize=ArraySize(signalSet);
    ArrayResize(signalSet,signalSize+1);
    signalSet[signalSize]=new IchiDataSet(sig,false);
+
+   lastSignal=sig;
   }
 //+------------------------------------------------------------------+

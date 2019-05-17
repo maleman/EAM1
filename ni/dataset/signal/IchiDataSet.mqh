@@ -22,6 +22,8 @@ public:
                      IchiDataSet(IchimokuSignals sig,bool proc);
                     ~IchiDataSet();
 
+   string            toString();
+
    IchimokuSignals getSignal(){return signal;}
    bool isProcessed(){return processed;}
 
@@ -53,5 +55,15 @@ IchiDataSet::IchiDataSet(IchimokuSignals sig,bool proc)
 //+------------------------------------------------------------------+
 IchiDataSet::~IchiDataSet()
   {
+  }
+//+------------------------------------------------------------------+
+
+//+------------------------------------------------------------------+
+//|                                                                  |
+//+------------------------------------------------------------------+
+string IchiDataSet::toString()
+  {
+   string proc=(processed)?" : TRUE ":" : FALSE ";
+   return ichimokuSignalsToString(signal)+proc;
   }
 //+------------------------------------------------------------------+
