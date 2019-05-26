@@ -19,6 +19,7 @@ class IchimokuStrategy : public Strategy
   {
 protected:
 
+   int               lastSinalDsSize;
    bool              longCondition();
    bool              shortCondition();
 
@@ -113,19 +114,33 @@ int IchimokuStrategy::onTick()
 
    if(trade==NULL)
       trade=new EaTrade();
+   if(ichi!=NULL)
+      ichi.onTick();
 
    if(trailingMode)
       trade.traillingStop();
 
-   if(ichi!=NULL)
-      ichi.onTick();
+   int bars=Bars(symbol,period);
+
+   if(lastBars!=bars)
+      lastBars=bars;
+   else
+      return -1;
+
+   int sisetsize=ArraySize(ichi.signalSet)-1;
+   if(lastSinalDsSize!=sisetsize)
+      lastSinalDsSize=sisetsize;
+   else
+      return -1;
 
    if(longCondition())
      {
-      string orderComent="BUY";
+      string orderComent="BUY : ["+ichimokuSignalsToString(ichi.signalSet[lastSinalDsSize].getSignal())+"]";
       trade.buy(symbol,orderComent,volume,stopLost,takeProfit);
-        }else if(shortCondition()){
-      string orderComent="SELL";
+     }
+   else if(shortCondition())
+     {
+      string orderComent="SELL : ["+ichimokuSignalsToString(ichi.signalSet[lastSinalDsSize].getSignal())+"]";
       trade.sell(symbol,orderComent,volume,stopLost,takeProfit);
      }
 
@@ -168,57 +183,60 @@ bool IchimokuStrategy::longCondition()
          ichi.signalSet[last].Processed(true);
          return true;
         }
-      else if(last>=0 && trade_mode==WISE_MODE)
+     }
+   else if(last>=1 && trade_mode==WISE_MODE)
+     {
+
+      bool isCurrentProc=ichi.signalSet[last].isProcessed();
+      bool isLastProc=ichi.signalSet[last-1].isProcessed();
+
+      if(!isCurrentProc && ichi.isStrongBuySignal(ichi.signalSet[last].getSignal()))
         {
-
-         bool firstStage=(!ichi.signalSet[last].isProcessed()
-                          && !ichi.signalSet[last-1].isProcessed()
-                          && ichi.signalSet[last].getSignal()==WEAK_BUY_TS_KS_CROSS
-                          && ichi.signalSet[last-1].getSignal()==KUMO_BUY_BREAKOUT);
-
-         bool secondStage=(!ichi.signalSet[last].isProcessed()
-                           && !ichi.signalSet[last-1].isProcessed()
-                           && ichi.signalSet[last].getSignal()==NEUTRAL_BUY_TS_KS_CROSS
-                           && ichi.signalSet[last-1].getSignal()==KUMO_BUY_BREAKOUT);
-
-         bool thirdStage=(!ichi.signalSet[last].isProcessed()
-                          && ichi.signalSet[last].getSignal()==STRONG_BUY_TS_KS_CROSS);
-
-         bool fourStage=((!ichi.signalSet[last].isProcessed())
-                         &&(ichi.signalSet[last].getSignal()==NEUTRAL_BUY_SENKOU_SPAN_CROSS
-                         || ichi.signalSet[last].getSignal()==NEUTRAL_BUY_KIJUN_SEN_CROSS
-                         || ichi.signalSet[last].getSignal()==STRONG_BUY_SENKOU_SPAN_CROSS
-                         || ichi.signalSet[last].getSignal()==STRONG_BUY_KIJUN_SEN_CROSS));
-
-         if(firstStage || secondStage)
-           {
-            ichi.signalSet[last].Processed(true);
-            ichi.signalSet[last-1].Processed(true);
-
-            return true;
-           }
-         else if(thirdStage || fourStage)
-           {
-            ichi.signalSet[last].Processed(true);
-            return true;
-           }
+         ichi.signalSet[last].Processed(true);
+         return true;
         }
-      else if(last>=0 && trade_mode==SAFE_MODE)
+
+      bool current=isCurrentProc
+                   &&(ichi.isStrongBuySignal(ichi.signalSet[last].getSignal())
+                   || ichi.isNeutralBuySignal(ichi.signalSet[last].getSignal())
+                   || ichi.isWeakBuySignal(ichi.signalSet[last].getSignal()));
+
+                   bool previous=isLastProc
+                   &&(ichi.isStrongBuySignal(ichi.signalSet[last-1].getSignal())
+                   || ichi.isNeutralBuySignal(ichi.signalSet[last-1].getSignal())
+                   || ichi.isWeakBuySignal(ichi.signalSet[last-1].getSignal()));
+
+                   if(current && previous)
         {
-         if(!ichi.signalSet[last].isProcessed()
-            && (ichi.signalSet[last].getSignal()==STRONG_BUY_TS_KS_CROSS
-            || ichi.signalSet[last].getSignal() == STRONG_BUY_KIJUN_SEN_CROSS
-            || ichi.signalSet[last].getSignal() == STRONG_BUY_SENKOU_SPAN_CROSS
-            || ichi.signalSet[last].getSignal() == STRONG_BUY_KIJUN_SEN_CROSS))
-           {
-            ichi.signalSet[last].Processed(true);
-            return true;
-           }
+         ichi.signalSet[last].Processed(true);
+         ichi.signalSet[last-1].Processed(true);
+         return true;
+        }
+     }
+   else if(last>=0 && trade_mode==SAFE_MODE)
+     {
+      if(!ichi.signalSet[last].isProcessed()
+         && (ichi.signalSet[last].getSignal()==STRONG_BUY_TS_KS_CROSS
+         || ichi.signalSet[last].getSignal() == STRONG_BUY_KIJUN_SEN_CROSS
+         || ichi.signalSet[last].getSignal() == STRONG_BUY_SENKOU_SPAN_CROSS
+         || ichi.signalSet[last].getSignal() == STRONG_BUY_KIJUN_SEN_CROSS))
+        {
+         ichi.signalSet[last].Processed(true);
+         return true;
         }
      }
 
    return(false);
   }
+//+------------------------------------------------------------------+
+//|                                                                  |
+//+------------------------------------------------------------------+
+//+------------------------------------------------------------------+
+//|                                                                  |
+//+------------------------------------------------------------------+
+//+------------------------------------------------------------------+
+//|                                                                  |
+//+------------------------------------------------------------------+
 //+------------------------------------------------------------------+
 //|Check short condition sell                                        |
 //+------------------------------------------------------------------+
@@ -226,7 +244,9 @@ bool IchimokuStrategy::shortCondition()
   {
 
    int last=ArraySize(ichi.signalSet)-1;
-
+//+------------------------------------------------------------------+
+//|                                                                  |
+//+------------------------------------------------------------------+
    if(last>=0 && trade_mode==ROOKIE_MODE)
      {
       if(!ichi.signalSet[last].isProcessed()
@@ -244,153 +264,49 @@ bool IchimokuStrategy::shortCondition()
          ichi.signalSet[last].Processed(true);
          return true;
         }
-      else if(last>=0 && trade_mode==WISE_MODE)
+     }
+//+------------------------------------------------------------------+
+//|                                                                  |
+//+------------------------------------------------------------------+
+   else if(last>=1 && trade_mode==WISE_MODE)
+     {
+
+      bool isCurrentProc=ichi.signalSet[last].isProcessed();
+      bool isLastProc=ichi.signalSet[last-1].isProcessed();
+
+      bool current=!isCurrentProc
+                   &&(ichi.isStrongSellSignal(ichi.signalSet[last].getSignal())
+                   || ichi.isNeutralSellSignal(ichi.signalSet[last].getSignal())
+                   || ichi.isWeakSellSignal(ichi.signalSet[last].getSignal()));
+
+                   bool previous=!isLastProc
+                   &&(ichi.isStrongSellSignal(ichi.signalSet[last-1].getSignal())
+                   || ichi.isNeutralSellSignal(ichi.signalSet[last-1].getSignal())
+                   || ichi.isWeakSellSignal(ichi.signalSet[last-1].getSignal()));
+
+                   if(current && previous)
         {
-
-         bool firstStage=(!ichi.signalSet[last].isProcessed()
-                          && !ichi.signalSet[last-1].isProcessed()
-                          && ichi.signalSet[last].getSignal()==WEAK_SELL_TS_KS_CROSS
-                          && ichi.signalSet[last-1].getSignal()==KUMO_SELL_BREAKOUT);
-
-         bool secondStage=(!ichi.signalSet[last].isProcessed()
-                           && !ichi.signalSet[last-1].isProcessed()
-                           && ichi.signalSet[last].getSignal()==NEUTRAL_SELL_TS_KS_CROSS
-                           && ichi.signalSet[last-1].getSignal()==KUMO_SELL_BREAKOUT);
-
-         bool thirdStage=(!ichi.signalSet[last].isProcessed()
-                          && ichi.signalSet[last].getSignal()==STRONG_SELL_TS_KS_CROSS);
-
-         bool fourStage=((!ichi.signalSet[last].isProcessed())
-                         &&(ichi.signalSet[last].getSignal()==STRONG_SELL_SENKOU_SPAN_CROSS
-                         || ichi.signalSet[last].getSignal()==STRONG_SELL_KIJUN_SEN_CROSS));
-
-         if(firstStage || secondStage)
-           {
-            ichi.signalSet[last].Processed(true);
-            ichi.signalSet[last-1].Processed(true);
-
-            return true;
-           }
-         else if(thirdStage || fourStage)
-           {
-            ichi.signalSet[last].Processed(true);
-            return true;
-           }
+         ichi.signalSet[last].Processed(true);
+         ichi.signalSet[last-1].Processed(true);
+         return true;
         }
-      else if(last>=0 && trade_mode==SAFE_MODE)
+     }
+//+------------------------------------------------------------------+
+//|                                                                  |
+//+------------------------------------------------------------------+
+   else if(last>=0 && trade_mode==SAFE_MODE)
+     {
+      if(!ichi.signalSet[last].isProcessed()
+         && (ichi.signalSet[last].getSignal()==STRONG_SELL_TS_KS_CROSS
+         || ichi.signalSet[last].getSignal() == STRONG_SELL_KIJUN_SEN_CROSS
+         || ichi.signalSet[last].getSignal() == STRONG_SELL_SENKOU_SPAN_CROSS
+         || ichi.signalSet[last].getSignal() == STRONG_SELL_KIJUN_SEN_CROSS))
         {
-         if(!ichi.signalSet[last].isProcessed()
-            && (ichi.signalSet[last].getSignal()==STRONG_SELL_TS_KS_CROSS
-            || ichi.signalSet[last].getSignal() == STRONG_SELL_KIJUN_SEN_CROSS
-            || ichi.signalSet[last].getSignal() == STRONG_SELL_SENKOU_SPAN_CROSS
-            || ichi.signalSet[last].getSignal() == STRONG_SELL_KIJUN_SEN_CROSS))
-           {
-            ichi.signalSet[last].Processed(true);
-            return true;
-           }
+         ichi.signalSet[last].Processed(true);
+         return true;
         }
      }
 
    return(false);
   }
-//+------------------------------------------------------------------+
-//|                                                                  |
-//+------------------------------------------------------------------+
-//+------------------------------------------------------------------+
-//|                                                                  |
-//+------------------------------------------------------------------+
-
-
-/*
-//+------------------------------------------------------------------+
-//|exit long orders                                                  |
-//+------------------------------------------------------------------+
-bool IchimokuStrategy::exitLong(void)
-  {
-
-   if(signal.getTenkanKijunCrossSignal()==WEAK_SELL_TS_KS_CROSS && lastExitLong!=WEAK_SELL_TS_KS_CROSS)
-     {
-      lastExitLong=WEAK_SELL_TS_KS_CROSS;
-      return true;
-        }else if(signal.getTenkanKijunCrossSignal()==NEUTRAL_SELL_TS_KS_CROSS && lastExitLong!=NEUTRAL_SELL_TS_KS_CROSS){
-      lastExitLong=NEUTRAL_SELL_TS_KS_CROSS;
-      return true;
-        }else if(signal.getTenkanKijunCrossSignal()==STRONG_SELL_TS_KS_CROSS && lastExitLong!=STRONG_SELL_TS_KS_CROSS){
-      lastExitLong=STRONG_SELL_TS_KS_CROSS;
-      return true;
-        }else if(signal.getKijunCrossSignal()==WEAK_SELL_KIJUN_SEN_CROSS && lastExitLong!=WEAK_SELL_KIJUN_SEN_CROSS){
-      lastExitLong=WEAK_SELL_KIJUN_SEN_CROSS;
-      return true;
-        }else if(signal.getKijunCrossSignal()==NEUTRAL_SELL_KIJUN_SEN_CROSS && lastExitLong!=NEUTRAL_SELL_KIJUN_SEN_CROSS){
-      lastExitLong=NEUTRAL_SELL_KIJUN_SEN_CROSS;
-      return true;
-        }else if(signal.getKijunCrossSignal()==STRONG_SELL_KIJUN_SEN_CROSS && lastExitLong!=STRONG_SELL_KIJUN_SEN_CROSS){
-      lastExitLong=STRONG_SELL_KIJUN_SEN_CROSS;
-      return true;
-        }else if(signal.getSenkouCrossSignal()==WEAK_SELL_SENKOU_SPAN_CROSS && lastExitLong!=WEAK_SELL_SENKOU_SPAN_CROSS){
-      lastExitLong=WEAK_SELL_SENKOU_SPAN_CROSS;
-      return true;
-        }else if(signal.getSenkouCrossSignal()==NEUTRAL_SELL_SENKOU_SPAN_CROSS && lastExitLong!=NEUTRAL_SELL_SENKOU_SPAN_CROSS){
-      lastExitLong=NEUTRAL_SELL_SENKOU_SPAN_CROSS;
-      return true;
-        }else if(signal.getSenkouCrossSignal()==STRONG_SELL_SENKOU_SPAN_CROSS && lastExitLong!=STRONG_SELL_SENKOU_SPAN_CROSS){
-      lastExitLong=STRONG_SELL_SENKOU_SPAN_CROSS;
-      return true;
-        }else if(signal.getKumoBreakSignal()==KUMO_SELL_BREAKOUT && lastExitLong!=KUMO_SELL_BREAKOUT){
-      lastExitLong=KUMO_SELL_BREAKOUT;
-      return true;
-     }
-
-   return false;
-  }
-//+------------------------------------------------------------------+
-//|                                                                  |
-//+------------------------------------------------------------------+
-//+------------------------------------------------------------------+
-//|                                                                  |
-//+------------------------------------------------------------------+
-//+------------------------------------------------------------------+
-//|exit long orders                                                  |
-//+------------------------------------------------------------------+
-bool IchimokuStrategy::exitShort(void)
-  {
-
-
-   if(signal.getTenkanKijunCrossSignal()==WEAK_BUY_TS_KS_CROSS && lastExitShort!=WEAK_BUY_TS_KS_CROSS)
-     {
-      lastExitShort=WEAK_BUY_TS_KS_CROSS;
-      return true;
-        }else if(signal.getTenkanKijunCrossSignal()==NEUTRAL_BUY_TS_KS_CROSS && lastExitShort!=NEUTRAL_BUY_TS_KS_CROSS){
-      lastExitShort=NEUTRAL_BUY_TS_KS_CROSS;
-      return true;
-        }else if(signal.getTenkanKijunCrossSignal()==STRONG_BUY_TS_KS_CROSS && lastExitShort!=STRONG_BUY_TS_KS_CROSS){
-      lastExitShort=STRONG_BUY_TS_KS_CROSS;
-      return true;
-        }else if(signal.getKijunCrossSignal()==WEAK_BUY_KIJUN_SEN_CROSS && lastExitShort!=WEAK_BUY_KIJUN_SEN_CROSS){
-      lastExitShort=WEAK_BUY_KIJUN_SEN_CROSS;
-      return true;
-        }else if(signal.getKijunCrossSignal()==NEUTRAL_BUY_KIJUN_SEN_CROSS && lastExitShort!=NEUTRAL_BUY_KIJUN_SEN_CROSS){
-      lastExitShort=NEUTRAL_BUY_KIJUN_SEN_CROSS;
-      return true;
-        }else if(signal.getKijunCrossSignal()==STRONG_BUY_KIJUN_SEN_CROSS && lastExitShort!=STRONG_BUY_KIJUN_SEN_CROSS){
-      lastExitShort=STRONG_BUY_KIJUN_SEN_CROSS;
-      return true;
-        }else if(signal.getSenkouCrossSignal()==WEAK_BUY_SENKOU_SPAN_CROSS && lastExitShort!=WEAK_BUY_SENKOU_SPAN_CROSS){
-      lastExitShort=WEAK_BUY_SENKOU_SPAN_CROSS;
-      return true;
-        }else if(signal.getSenkouCrossSignal()==NEUTRAL_BUY_SENKOU_SPAN_CROSS && lastExitShort!=NEUTRAL_BUY_SENKOU_SPAN_CROSS){
-      lastExitShort=NEUTRAL_BUY_SENKOU_SPAN_CROSS;
-      return true;
-        }else if(signal.getSenkouCrossSignal()==STRONG_BUY_SENKOU_SPAN_CROSS && lastExitShort!=STRONG_BUY_SENKOU_SPAN_CROSS){
-      lastExitShort=STRONG_BUY_SENKOU_SPAN_CROSS;
-      return true;
-        }else if(signal.getKumoBreakSignal()==KUMO_SELL_BREAKOUT && lastExitShort!=KUMO_SELL_BREAKOUT){
-      lastExitShort=KUMO_SELL_BREAKOUT;
-      return true;
-     }
-
-   return false;
-  }
-//+------------------------------------------------------------------+
-*/
 //+------------------------------------------------------------------+

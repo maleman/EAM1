@@ -21,7 +21,7 @@ protected:
    double            takeProfit;
    double            volume;
 */
-
+int lastBars;
 public:
                      Strategy();
                     ~Strategy();
