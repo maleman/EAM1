@@ -23,6 +23,8 @@ private:
    IchimokuSignals   tenkanKijunCrossSignal;
    IchimokuSignals   kijunPriceCrossSignal;
 
+   double            diffConstant;
+
    bool              changeTrendTK;
    void              tekanKijunCross(double &Tenkan_sen_Buffer[],
                                      double &Kijun_sen_Buffer[],
@@ -41,7 +43,8 @@ private:
    IchimokuSignals   kumoBreak;
    bool              iskTrendPriceChange;
    void              setKumoPriceTrend(double close,double Senkou_A,double Senkou_B);
-   void              setSenkouTrend(double senkou_A,double senkou_b);
+   void              setSenkouTrend(double &senkou_A[],double &senkou_b[]);
+   bool              flatBottomKumo;
 
 public:
                      IchiSignals();
@@ -56,6 +59,7 @@ public:
                             MqlRates &rates[]);
 
    MarketTrend       getSenkouTrend(){return SenkouTrend;}
+   MarketTrend       getkumoPriceTrend(){return kumoPriceTrend;}
 
    IchimokuSignals   getTkc(){return tenkanKijunCrossSignal;}
    IchimokuSignals   getkPc(){return kijunPriceCrossSignal;}
@@ -80,34 +84,54 @@ IchiSignals::~IchiSignals()
 //+------------------------------------------------------------------+
 //|                                                                  |
 //+------------------------------------------------------------------+
-IchiSignals::setChikouPriceTrend(double closePrice,double chickou)
+void IchiSignals::setChikouPriceTrend(double closePrice,double chickou)
   {
 
    diff=chickou-closePrice;
 //MarketTrend       trend=tekanKijunTrend;
 
-   if(diff>0.0010)
+   if(diff>diffConstant)
       tekanKijunTrend=UPTREND;
    else
-   if(diff<=-0.0010)
+   if(diff<=-diffConstant)
             tekanKijunTrend=DOWNTREND;
 
   }
 //+------------------------------------------------------------------+
 //|                                                                  |
 //+------------------------------------------------------------------+
-IchiSignals::setSenkouTrend(double senkou_A,double senkou_b)
+void IchiSignals::setSenkouTrend(double &Senkou_Span_A_Buffer[],double &Senkou_Span_B_Buffer[])
   {
-   diff=senkou_A-senkou_b;
+
+   int sz=ArraySize(Senkou_Span_A_Buffer)-1;
+   double senkou_a = Senkou_Span_A_Buffer[sz];
+   double senkou_b = Senkou_Span_B_Buffer[sz];
+
+
+   diff=senkou_a-senkou_b;
    MarketTrend trend=SenkouTrend;
 
-   if(diff>0.0010)
+   if(diff>diffConstant)
      {
       trend=UPTREND;
+      if(Senkou_Span_A_Buffer[sz]==Senkou_Span_A_Buffer[sz-1]
+         && Senkou_Span_A_Buffer[sz-1] == Senkou_Span_A_Buffer[sz-2]
+         && Senkou_Span_A_Buffer[sz-2] == Senkou_Span_A_Buffer[sz-3]
+         && Senkou_Span_A_Buffer[sz-4] == Senkou_Span_A_Buffer[sz-4])
+         flatBottomKumo=true;
+      else
+         flatBottomKumo=false;
      }
-   else if(diff<=-0.0010)
+   else if(diff<-diffConstant)
      {
       trend=DOWNTREND;
+      if(Senkou_Span_B_Buffer[sz]==Senkou_Span_B_Buffer[sz-1]
+         && Senkou_Span_B_Buffer[sz-1] == Senkou_Span_B_Buffer[sz-2]
+         && Senkou_Span_B_Buffer[sz-2] == Senkou_Span_B_Buffer[sz-3]
+         && Senkou_Span_B_Buffer[sz-4] == Senkou_Span_B_Buffer[sz-4])
+         flatBottomKumo=true;
+      else
+         flatBottomKumo=false;
      }
 
    if(trend!=SenkouTrend)
@@ -117,7 +141,7 @@ IchiSignals::setSenkouTrend(double senkou_A,double senkou_b)
 //+------------------------------------------------------------------+
 //|                                                                  |
 //+------------------------------------------------------------------+
-IchiSignals::setKumoPriceTrend(double close,double Senkou_A,double Senkou_B)
+void IchiSignals::setKumoPriceTrend(double close,double Senkou_A,double Senkou_B)
   {
    MarketTrend trend=kumoPriceTrend;
 
@@ -125,10 +149,6 @@ IchiSignals::setKumoPriceTrend(double close,double Senkou_A,double Senkou_B)
       trend=UPTREND;
    else if(close<Senkou_A && close<Senkou_B)
       trend=DOWNTREND;
-//else
-//   trend=NEUTRAL_TREND;
-
-
 
    if(trend!=kumoPriceTrend)
      {
@@ -139,13 +159,21 @@ IchiSignals::setKumoPriceTrend(double close,double Senkou_A,double Senkou_B)
          return;
         }
 
-      if(kumoPriceTrend==DOWNTREND && trend==UPTREND && SenkouTrend==UPTREND)
+      if(kumoPriceTrend==DOWNTREND
+         && trend==UPTREND
+         && !flatBottomKumo
+         //&& SenkouTrend==UPTREND
+         )
         {
          kumoBreak=KUMO_BUY_BREAKOUT;
          kumoPriceTrend=trend;
 
         }
-      if(kumoPriceTrend==UPTREND && trend==DOWNTREND && SenkouTrend==DOWNTREND)
+      if(kumoPriceTrend==UPTREND
+         && trend==DOWNTREND
+         && !flatBottomKumo
+         //&& SenkouTrend==DOWNTREND
+         )
         {
          kumoBreak=KUMO_SELL_BREAKOUT;
          kumoPriceTrend=trend;
@@ -158,7 +186,7 @@ IchiSignals::setKumoPriceTrend(double close,double Senkou_A,double Senkou_B)
 //+------------------------------------------------------------------+
 //|                                                                  |
 //+------------------------------------------------------------------+
-IchiSignals::tekanKijunCross(double &Tenkan_sen_Buffer[],
+void IchiSignals::tekanKijunCross(double &Tenkan_sen_Buffer[],
                              double &Kijun_sen_Buffer[],
                              double Senkou_A,
                              double Senkou_B)
@@ -171,11 +199,11 @@ IchiSignals::tekanKijunCross(double &Tenkan_sen_Buffer[],
 
    MarketTrend       trend=tekanKijunTrend;
 
-   if(diff>0.0010)
+   if(diff>diffConstant)
      {
       trend=UPTREND;
      }
-   else if(diff<=-0.0010)
+   else if(diff<=-diffConstant)
      {
       trend=DOWNTREND;
      }
@@ -226,7 +254,7 @@ IchiSignals::tekanKijunCross(double &Tenkan_sen_Buffer[],
 //+------------------------------------------------------------------+
 //|                                                                  |
 //+------------------------------------------------------------------+
-IchiSignals::kijunPriceCross(double open,double close,double kijun,double Senkou_A,double Senkou_B)
+void IchiSignals::kijunPriceCross(double open,double close,double kijun,double Senkou_A,double Senkou_B)
   {
 
 //IchimokuSignals sig=kijunPriceCrossSignal;
@@ -234,9 +262,9 @@ IchiSignals::kijunPriceCross(double open,double close,double kijun,double Senkou
 
    diff=close-kijun;
 
-   if(diff>0.0010)
+   if(diff>diffConstant)
       trend=UPTREND;
-   if(diff<=-0.0010)
+   if(diff<=-diffConstant)
       trend=DOWNTREND;
 
    if(kijunPriceTrend!=trend)
@@ -244,11 +272,12 @@ IchiSignals::kijunPriceCross(double open,double close,double kijun,double Senkou
       if(kijunPriceTrend==UPTREND && trend==DOWNTREND)
         {
 
-         if(kijun>Senkou_A && kijun>Senkou_B)
+         if(kijun<Senkou_A && kijun<Senkou_B)
             kijunPriceCrossSignal=STRONG_SELL_KIJUN_SEN_CROSS;
-         else if(kijun<Senkou_A && kijun<Senkou_B)
+         else if(kijun>Senkou_A && kijun>Senkou_B)
             kijunPriceCrossSignal=WEAK_SELL_KIJUN_SEN_CROSS;
-         else
+         else if((kijun<=Senkou_A && kijun>Senkou_B)
+            || (kijun>Senkou_A && kijun<=Senkou_B))
             kijunPriceCrossSignal=NEUTRAL_SELL_KIJUN_SEN_CROSS;
 
         }
@@ -258,12 +287,10 @@ IchiSignals::kijunPriceCross(double open,double close,double kijun,double Senkou
             kijunPriceCrossSignal=STRONG_BUY_KIJUN_SEN_CROSS;
          else if(kijun<Senkou_A && kijun<Senkou_B)
             kijunPriceCrossSignal=WEAK_BUY_KIJUN_SEN_CROSS;
-         else
+         else if((kijun<=Senkou_A && kijun>Senkou_B)
+            || (kijun>Senkou_A && kijun<=Senkou_B))
             kijunPriceCrossSignal=NEUTRAL_BUY_KIJUN_SEN_CROSS;
         }
-
-      //if(kijunPriceCrossSignal!=sig)
-      //   kijunPriceCrossSignal=sig;
 
       kijunPriceTrend=trend;
      }
@@ -272,7 +299,7 @@ IchiSignals::kijunPriceCross(double open,double close,double kijun,double Senkou
 //+------------------------------------------------------------------+
 //|                                                                  |
 //+------------------------------------------------------------------+
-IchiSignals::search(double &Tenkan_sen_Buffer[],
+void IchiSignals::search(double &Tenkan_sen_Buffer[],
                     double &Kijun_sen_Buffer[],
                     double &Senkou_Span_A_Buffer[],
                     double &Senkou_Span_B_Buffer[],
@@ -280,13 +307,15 @@ IchiSignals::search(double &Tenkan_sen_Buffer[],
                     MqlRates &rates[])
   {
 
+   diffConstant=0.0010;
+
    int tekanSize = ArraySize(Tenkan_sen_Buffer)-1;
    int kijunSize = ArraySize(Kijun_sen_Buffer)-1;
    int senkouSize=ArraySize(Senkou_Span_A_Buffer)-1;
    int chinkouSize=ArraySize(Chinkou_Span_Buffer)-1;
    int rateSize=ArraySize(rates)-1;
 
-   setSenkouTrend(Senkou_Span_A_Buffer[senkouSize],Senkou_Span_B_Buffer[senkouSize]);
+   setSenkouTrend(Senkou_Span_A_Buffer,Senkou_Span_B_Buffer);
 
    setKumoPriceTrend(rates[rateSize].close
                      ,Senkou_Span_A_Buffer[tekanSize+1]
@@ -296,26 +325,30 @@ IchiSignals::search(double &Tenkan_sen_Buffer[],
 
    tekanKijunCross(Tenkan_sen_Buffer
                    ,Kijun_sen_Buffer
-                   ,Senkou_Span_A_Buffer[senkouSize]
-                   ,Senkou_Span_B_Buffer[senkouSize]);
+                   ,Senkou_Span_A_Buffer[tekanSize+1]
+                   ,Senkou_Span_B_Buffer[tekanSize+1]);
 
    kijunPriceCross(rates[rateSize].open
                    ,rates[rateSize].close
                    ,Kijun_sen_Buffer[kijunSize]
-                   ,Senkou_Span_A_Buffer[senkouSize]
-                   ,Senkou_Span_B_Buffer[senkouSize]);
+                   ,Senkou_Span_A_Buffer[tekanSize+1]
+                   ,Senkou_Span_B_Buffer[tekanSize+1]);
   }
 //+------------------------------------------------------------------+
 
 //+------------------------------------------------------------------+
 //|                                                                  |
 //+------------------------------------------------------------------+
-IchiSignals::toInfo()
+void IchiSignals::toInfo()
   {
+  
+  
 
    Comment("Senales de Indicador Ichimoku","\n"
            //"Diferencia Tekan/Kijun            : ",diff,"\n",
-           //"KINJUN/PRICE CROSS SIGNAL : ",ichimokuSignalsToString(kijunPriceCrossSignal),
-           ", SENKOU TREND : ",marketTrendToString(SenkouTrend),"\n");
+          // "  LAST SIGNAL : ",ichimokuSignalsToString(kijunPriceCrossSignal),
+           ", SENKOU TREND : ",marketTrendToString(SenkouTrend),"\n"
+           ", PRICE  TREND : ",marketTrendToString(kumoPriceTrend),"\n"
+           ", FLAT BOTTOM : ",(flatBottomKumo)?" SI ":" NO ","\n");
   }
 //+------------------------------------------------------------------+

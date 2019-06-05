@@ -145,7 +145,7 @@ int Ema::onTick(void)
 //+------------------------------------------------------------------+
 //|                                                                  |
 //+------------------------------------------------------------------+
-Ema::lookforsigns(void)
+void Ema::lookforsigns(void)
   {
 
    int f = ArraySize(iMABuffer)-1;
@@ -163,7 +163,7 @@ Ema::lookforsigns(void)
 //+------------------------------------------------------------------+
 //|                                                                  |
 //+------------------------------------------------------------------+
-Ema::addSignal(EmaSignals sig)
+void Ema::addSignal(EmaSignals sig)
   {
 //int signalSize=ArraySize(signals);
 //ArrayResize(signals,signalSize+1);
@@ -203,7 +203,7 @@ EmaDataSet *Ema::getLastSigDs()
 //+------------------------------------------------------------------+
 //|                                                                  |
 //+------------------------------------------------------------------+
-Ema::deInit()
+void Ema::deInit()
   {
    //delete signalsSet;
   }

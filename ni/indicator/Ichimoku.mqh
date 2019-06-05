@@ -10,7 +10,6 @@
 #include "Indicator.mqh"
 #include "..\enum\Enums.mqh"
 #include "..\dataset\signal\IchiDataSet.mqh"
-#include "..\signal\IchimukuSignal.mqh"
 #include "..\signal\IchiSignals.mqh"
 //+------------------------------------------------------------------+
 //|                                                                  |
@@ -46,11 +45,10 @@ private:
    IchimokuSignals   lastSignal;
    //IchimukuSignal   *ichiSignals;
    IchiSignals      *ichiSignal;
-
-   //IchimokuSignals   signals[];
-
    string            symbol;
    ENUM_TIMEFRAMES   period;
+
+   IchiDataSet       signalSet[];
 
 protected:
    virtual int       copyValues();
@@ -73,6 +71,7 @@ public:
 
    void              deInit();
    void              toInfo();
+   void              copySignalUnProcessed(IchiDataSet &arr[]);
 
    bool              isWeakBuySignal(IchimokuSignals sig);
    bool              isNeutralBuySignal(IchimokuSignals sig);
@@ -81,11 +80,9 @@ public:
    bool              isNeutralSellSignal(IchimokuSignals sig);
    bool              isStrongSellSignal(IchimokuSignals sig);
 
-   IchiDataSet       signalSet[];
-
    //MarketTrend       getChinkouTrend(){return chinkouTrend;}
    //MarketTrend       getkumoTrend(){return kumoTrend;}
-   //MarketTrend       getclosePriceTrend(){closePriceTrend;}
+   MarketTrend       getclosePriceTrend(){return closePriceTrend;}
    //MarketTrend       getTekanKijunTrend(){TekanKijunTrend;}
 
    MarketTrend       getSenkouTrend(){return SenkouTrend;}
@@ -184,7 +181,7 @@ int Ichimoku::onTick()
 //+------------------------------------------------------------------+
 //|                                                                  |
 //+------------------------------------------------------------------+
-Ichimoku::addSignal(IchimokuSignals sig)
+void Ichimoku::addSignal(IchimokuSignals sig)
   {
 
    if(sig==lastSignal || sig==NO_SIGNAL)
@@ -203,16 +200,15 @@ Ichimoku::addSignal(IchimokuSignals sig)
 //+------------------------------------------------------------------+
 //|                                                                  |
 //+------------------------------------------------------------------+
-Ichimoku::lookforsigns()
+void Ichimoku::lookforsigns()
   {
    if(ichiSignal == NULL)
       ichiSignal = new IchiSignals();
 
-   ichiSignal.toInfo();
-
    ichiSignal.search(tenkan,kijun,senkou_A,senkou_B,chinkou,rates);
 
    SenkouTrend=ichiSignal.getSenkouTrend();
+   closePriceTrend=ichiSignal.getkumoPriceTrend();
 
    if(tenkanKijunCrossSignal!=ichiSignal.getTkc())
      {
@@ -236,7 +232,7 @@ Ichimoku::lookforsigns()
 //+------------------------------------------------------------------+
 //|                                                                  |
 //+------------------------------------------------------------------+
-Ichimoku::deInit()
+void Ichimoku::deInit()
   {
    delete ichiSignal;
   }
@@ -338,6 +334,27 @@ bool  Ichimoku::isStrongSellSignal(IchimokuSignals sig)
       return true;
 
    return false;
+
+  }
+//+------------------------------------------------------------------+
+
+//+------------------------------------------------------------------+
+//|                                                                  |
+//+------------------------------------------------------------------+
+void  Ichimoku::copySignalUnProcessed(IchiDataSet &arr[])
+  {
+
+   for(int i=0; i<ArraySize(signalSet);i++)
+     {
+
+      if(signalSet[i].isProcessed())
+         continue;
+
+      ArrayResize(arr,i+1);
+      arr[i]=signalSet[i];
+
+      signalSet[i].Processed(true);
+     }
 
   }
 //+------------------------------------------------------------------+

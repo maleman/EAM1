@@ -30,12 +30,17 @@ private:
 public:
                      EaTrade();
                     ~EaTrade();
-
+   void              setEaMagic(int magic){MAGIC=magic;}
+   void              closePositionByType();
    void              buy(string symbol,string orderComent,double vol,double sl,double tp);
    void              sell(string symbol,string orderComent,double vol,double sl,double tp);
+   void              closePositionAll();
+   void              closePositionByType(ENUM_POSITION_TYPE type);
 
    void              traillingStop();
 
+   double            getProfitAllPosition();
+   double            getAdjustedPoint(){return m_adjusted_point;}
   };
 //+------------------------------------------------------------------+
 //|                                                                  |
@@ -51,11 +56,7 @@ EaTrade::EaTrade()
    if(positionInfo == NULL)
       positionInfo = new CPositionInfo;
 
-//if(m_symbol == NULL)
-//   m_symbol = new CSymbolInfo;
-
 //--- initialize common information
-//m_symbol.Name(Symbol());                  // symbol
    trade.SetExpertMagicNumber(MAGIC); // magic
    trade.SetMarginMode();
    trade.SetTypeFillingBySymbol(Symbol());
@@ -63,12 +64,9 @@ EaTrade::EaTrade()
    int digits_adjust=1;
    if(Digits()==3 || Digits()==5)
       digits_adjust=10;
-      
-   double point =SymbolInfoDouble(Symbol(),SYMBOL_POINT);  
-   m_adjusted_point=point*digits_adjust;
 
-//trade.SetMarginMode();
-//trade.SetTypeFillingBySymbol(m_symbol.Name());
+   double point=SymbolInfoDouble(Symbol(),SYMBOL_POINT);
+   m_adjusted_point=point*digits_adjust;
    trade.SetDeviationInPoints(3*digits_adjust);
   }
 //+------------------------------------------------------------------+
@@ -82,7 +80,7 @@ EaTrade::~EaTrade()
 //+------------------------------------------------------------------+
 //| Buy                                                              |
 //+------------------------------------------------------------------+
-EaTrade::buy(string symbol,string orderComent,double vol,double sl,double tp)
+void EaTrade::buy(string symbol,string orderComent,double vol,double sl,double tp)
   {
 
    if(trade == NULL)
@@ -97,7 +95,7 @@ EaTrade::buy(string symbol,string orderComent,double vol,double sl,double tp)
 //+------------------------------------------------------------------+
 //| Sell                                                             |
 //+------------------------------------------------------------------+
-EaTrade::sell(string symbol,string orderComent,double vol,double sl,double tp)
+void EaTrade::sell(string symbol,string orderComent,double vol,double sl,double tp)
   {
 
    if(trade == NULL)
@@ -111,9 +109,52 @@ EaTrade::sell(string symbol,string orderComent,double vol,double sl,double tp)
 //+------------------------------------------------------------------+
 
 //+------------------------------------------------------------------+
-//| Sell                                                             |
+//|                                                                  |
 //+------------------------------------------------------------------+
-EaTrade::traillingStop(void)
+void EaTrade::closePositionAll()
+  {
+   closePositionByType(POSITION_TYPE_BUY);
+   closePositionByType(POSITION_TYPE_SELL);
+  }
+//+------------------------------------------------------------------+
+//|                                                                  |
+//+------------------------------------------------------------------+
+void EaTrade::closePositionByType(ENUM_POSITION_TYPE type)
+  {
+
+   int positionTotal=PositionsTotal();
+
+   for(int i=positionTotal; i>=0; i--)
+     {
+      ulong positionTicket=PositionGetTicket(i);
+      string positionSymbol=PositionGetString(POSITION_SYMBOL);
+      ulong magic=PositionGetInteger(POSITION_MAGIC);
+      ENUM_POSITION_TYPE positionType=(ENUM_POSITION_TYPE)PositionGetInteger(POSITION_TYPE);
+
+      if(magic==MAGIC && type==positionType)
+        {
+         trade.PositionClose(positionTicket,5);
+        }
+     }
+
+  }
+//+------------------------------------------------------------------+
+//|                                                                  |
+//+------------------------------------------------------------------+
+double EaTrade::getProfitAllPosition()
+  {
+   double profit=0.0;
+   for(int i=PositionsTotal()-1; i>=0; i--)
+     {
+      if(positionInfo.SelectByIndex(i))
+         profit+=(positionInfo.Commission()+positionInfo.Swap()+positionInfo.Profit());
+     }
+   return profit;
+  }
+//+------------------------------------------------------------------+
+//|                                                                  |
+//+------------------------------------------------------------------+
+void EaTrade::traillingStop(void)
   {
 
    if(!TRAILING_STOP)
@@ -124,54 +165,61 @@ EaTrade::traillingStop(void)
 
    double m_traling_stop=InpTrailingStop*m_adjusted_point;
    double m_take_profit=InpTakeProfit*m_adjusted_point;
+//+------------------------------------------------------------------+
+//|                                                                  |
+//+------------------------------------------------------------------+
 
-   if(positionInfo.Select(Symbol()) && TRAILING_STOP)
+
+   int positionTotal=PositionsTotal();
+
+   for(int i=positionTotal; i>=0; i--)
      {
-      if(positionInfo.PositionType()==POSITION_TYPE_BUY)
+      //if(positionInfo.Select(Symbol()) && TRAILING_STOP)
+      if(positionInfo.SelectByIndex(i) && TRAILING_STOP)
         {
-
-         double localBid=SymbolInfoDouble(Symbol(),SYMBOL_BID);
-
-         if(localBid-positionInfo.PriceOpen()>m_adjusted_point*InpTrailingStop)
+         ulong positionTicket=PositionGetTicket(i);
+         if(positionInfo.PositionType()==POSITION_TYPE_BUY)
            {
 
-            double sl=NormalizeDouble(localBid-m_traling_stop,Digits());
-            double tp=positionInfo.TakeProfit();
-            if(positionInfo.StopLoss()<sl || positionInfo.StopLoss()==0.0)
+            double localBid=SymbolInfoDouble(Symbol(),SYMBOL_BID);
+
+            if(localBid-positionInfo.PriceOpen()>m_adjusted_point*InpTrailingStop)
               {
-               //--- modify position
-               if(trade.PositionModify(Symbol(),sl,tp))
-                  printf("Long position by %s to be modified",Symbol());
-               else
+
+               double sl=NormalizeDouble(localBid-m_traling_stop,Digits());
+               double tp=positionInfo.TakeProfit();
+               if(positionInfo.StopLoss()<sl || positionInfo.StopLoss()==0.0)
                  {
-                  printf("Error modifying position by %s : '%s'",Symbol(),trade.ResultComment());
-                  printf("Modify parameters : SL=%f,TP=%f",sl,tp);
+                  //--- modify position
+                  if(!trade.PositionModify(positionTicket,sl,tp))
+                    {
+                     printf("Error modifying position by %s : '%s'",Symbol(),trade.ResultComment());
+                     printf("Modify parameters : SL=%f,TP=%f",sl,tp);
+                    }
+                  //--- modified and must exit from expert
+                  //res=true;
                  }
-               //--- modified and must exit from expert
-               //res=true;
               }
-           }
 
-           }else if(positionInfo.PositionType()==POSITION_TYPE_SELL){
+              }else if(positionInfo.PositionType()==POSITION_TYPE_SELL){
 
-         double localAsk=SymbolInfoDouble(Symbol(),SYMBOL_ASK);
+            double localAsk=SymbolInfoDouble(Symbol(),SYMBOL_ASK);
 
-         if((positionInfo.PriceOpen()-localAsk)>(m_adjusted_point*InpTrailingStop))
-           {
-            double sl=NormalizeDouble(localAsk+m_traling_stop,Digits());
-            double tp=positionInfo.TakeProfit();
-            if(positionInfo.StopLoss()>sl || positionInfo.StopLoss()==0.0)
+            if((positionInfo.PriceOpen()-localAsk)>(m_adjusted_point*InpTrailingStop))
               {
-               //--- modify position
-               if(trade.PositionModify(Symbol(),sl,tp))
-                  printf("Short position by %s to be modified",Symbol());
-               else
+               double sl=NormalizeDouble(localAsk+m_traling_stop,Digits());
+               double tp=positionInfo.TakeProfit();
+               if(positionInfo.StopLoss()>sl || positionInfo.StopLoss()==0.0)
                  {
-                  printf("Error modifying position by %s : '%s'",Symbol(),trade.ResultComment());
-                  printf("Modify parameters : SL=%f,TP=%f",sl,tp);
+                  //--- modify position
+                  if(!trade.PositionModify(positionTicket,sl,tp))
+                    {
+                     printf("Error modifying position by %s : '%s'",Symbol(),trade.ResultComment());
+                     printf("Modify parameters : SL=%f,TP=%f",sl,tp);
+                    }
+                  //--- modified and must exit from expert
+                  //res=true;
                  }
-               //--- modified and must exit from expert
-               //res=true;
               }
            }
         }
